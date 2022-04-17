@@ -157,12 +157,15 @@ public unsafe class DesktopDuplicationApp
             , vertexShader.GetAddressOf())
             .ThrowHResult();
 
+        var lpPOSITION = (byte*)SilkMarshal.StringToPtr("POSITION", NativeStringEncoding.LPStr);
+        var lpTEXCOORD = (byte*)SilkMarshal.StringToPtr("TEXCOORD", NativeStringEncoding.LPStr);
+
         // Create input layout
         var inputLayouts = stackalloc InputElementDesc[]
         {
             new InputElementDesc
             {
-                SemanticName = (byte*)SilkMarshal.StringToPtr("POSITION"),
+                SemanticName = lpPOSITION,
                 SemanticIndex = 0,
                 Format = Format.FormatR32G32B32Float,
                 InputSlot = 0,
@@ -172,7 +175,7 @@ public unsafe class DesktopDuplicationApp
             },
             new InputElementDesc
             {
-                SemanticName = (byte*)SilkMarshal.StringToPtr("TEXCOORD"),
+                SemanticName = lpTEXCOORD,
                 SemanticIndex = 0,
                 Format = Format.FormatR32G32Float,
                 InputSlot = 0,
@@ -190,6 +193,9 @@ public unsafe class DesktopDuplicationApp
                 , vertexShaderBlob->GetBufferSize()
                 , inputLayout.GetAddressOf())
             .ThrowHResult();
+
+        SilkMarshal.Free((nint)lpPOSITION);
+        SilkMarshal.Free((nint)lpTEXCOORD);
 
         deviceContext->IASetInputLayout(inputLayout.GetPinnableReference());
         vertexShaderBlob->Release();
@@ -245,17 +251,17 @@ public unsafe class DesktopDuplicationApp
             .ThrowHResult();
 
         // Create viewports
-       renderTargetViewport = new Viewport();
-       renderTargetViewport.TopLeftX = 0;
-       renderTargetViewport.TopLeftY = 0;
-       renderTargetViewport.Width = 1280;
-       renderTargetViewport.Height = 720;
+        renderTargetViewport = new Viewport();
+        renderTargetViewport.TopLeftX = 0;
+        renderTargetViewport.TopLeftY = 0;
+        renderTargetViewport.Width = 1280;
+        renderTargetViewport.Height = 720;
 
-       windowViewport = new Viewport();
-       windowViewport.TopLeftX = 0;
-       windowViewport.TopLeftY = 0;
-       windowViewport.Width = window.Size.X;
-       windowViewport.Height = window.Size.Y;
+        windowViewport = new Viewport();
+        windowViewport.TopLeftX = 0;
+        windowViewport.TopLeftY = 0;
+        windowViewport.Width = window.Size.X;
+        windowViewport.Height = window.Size.Y;
     }
 
     private string GetAssetFullPath(string assetName) => Path.Combine(AppContext.BaseDirectory, assetName);
