@@ -7,8 +7,11 @@ using Silk.NET.Windowing;
 
 public unsafe class BaseApp : IApp
 {
-    private ComPtr<ID3D11RenderTargetView> backbuffer = default;
+    private ComPtr<ID3D11RenderTargetView> backBufferRenderTargetView = default;
     private ComPtr<ID3D11Resource> backBufferTexture = default;
+    private ComPtr<ID3D11Texture2D> depthStencilTexture = default;
+    private ComPtr<ID3D11DepthStencilView> depthStencilView = default;
+    private ComPtr<ID3D11DepthStencilState> depthStencilState = default;
 
     private readonly IServiceProvider serviceProvider;
     private readonly IGraphicsService graphicsService;
@@ -32,15 +35,18 @@ public unsafe class BaseApp : IApp
     {
         windowViewport.Width = windowSize.X;
         windowViewport.Height = windowSize.Y;
+        windowViewport.MinDepth = 0f;
+        windowViewport.MaxDepth = 1f;
         resetDevice = true;
     }
 
-    public virtual void Initialize(IWindow window)
+    public virtual Task Initialize(IWindow window, string[] args)
     {
         graphicsService.InitializeWindow(window, ref graphicsContext);
         Resize(window.Size);
         ResetBuffers();
         resetDevice = false;
+        return Task.CompletedTask;
     }
 
     public virtual void PrepareDraw()
@@ -55,10 +61,16 @@ public unsafe class BaseApp : IApp
 
         deviceContext->RSSetViewports(1, ref windowViewport);
 
-        deviceContext->OMSetRenderTargets(1, backbuffer.GetAddressOf(), null);
+        deviceContext->OMSetDepthStencilState(depthStencilState.GetPinnableReference(), 1);
 
-        var backgroundColor = stackalloc[] { 0f, 0f, 1.0f, 1.0f };
-        deviceContext->ClearRenderTargetView(backbuffer.GetPinnableReference(), backgroundColor);
+        deviceContext->OMSetRenderTargets(1, backBufferRenderTargetView.GetAddressOf(), depthStencilView.GetPinnableReference());
+
+        var backgroundColor = stackalloc[] { 1f, 1f, 1.0f, 1.0f };
+
+
+        deviceContext->ClearRenderTargetView(backBufferRenderTargetView.GetPinnableReference(), backgroundColor);
+
+        deviceContext->ClearDepthStencilView(depthStencilView.GetPinnableReference(), (uint)(ClearFlag.ClearDepth | ClearFlag.ClearStencil), 1.0f, 0);
     }
 
     public virtual void Draw()
@@ -70,10 +82,13 @@ public unsafe class BaseApp : IApp
 
     private void ResetBuffers()
     {
-        if (backbuffer.Handle != null)
+        var device = graphicsContext.device.GetPinnableReference();
+
+        if (backBufferRenderTargetView.Handle != null)
         {
-            backbuffer.Release();
+            backBufferRenderTargetView.Release();
             backBufferTexture.Release();
+
             graphicsContext.swapChain.GetPinnableReference()->ResizeBuffers(2, (uint)windowViewport.Width, (uint)windowViewport.Height, Silk.NET.DXGI.Format.FormatR8G8B8A8Unorm, 0);
         }
 
@@ -82,9 +97,59 @@ public unsafe class BaseApp : IApp
             .ThrowHResult();
 
         logger.LogInformation("CreateRenderTargetView (back buffer)");
-        graphicsContext.device.GetPinnableReference()
-            ->CreateRenderTargetView(backBufferTexture, null, backbuffer.GetAddressOf())
+        device
+            ->CreateRenderTargetView(backBufferTexture, null, backBufferRenderTargetView.GetAddressOf())
             .ThrowHResult();
+
+
+        Texture2DDesc depthStencilTextureDesc;
+        depthStencilTextureDesc.Width = (uint)windowViewport.Width;
+        depthStencilTextureDesc.Height = (uint)windowViewport.Height;
+        depthStencilTextureDesc.MipLevels = 1;
+        depthStencilTextureDesc.ArraySize = 1;
+        depthStencilTextureDesc.Format = Silk.NET.DXGI.Format.FormatR32Typeless;
+        depthStencilTextureDesc.SampleDesc.Count = 1;
+        depthStencilTextureDesc.SampleDesc.Quality = 0;
+        depthStencilTextureDesc.Usage = Usage.UsageDefault;
+        depthStencilTextureDesc.BindFlags = (uint)(BindFlag.BindDepthStencil);
+        depthStencilTextureDesc.CPUAccessFlags = 0;
+        depthStencilTextureDesc.MiscFlags = 0;
+
+
+        var depthStencilViewDesc = new DepthStencilViewDesc(
+            viewDimension: DsvDimension.DsvDimensionTexture2D,
+            format: Silk.NET.DXGI.Format.FormatD32Float);
+
+        depthStencilViewDesc.Texture2D.MipSlice = 0;
+
+        device
+            ->CreateTexture2D(ref depthStencilTextureDesc, null, depthStencilTexture.GetAddressOf())
+            .ThrowHResult();
+
+        device
+            ->CreateDepthStencilView((ID3D11Resource*)depthStencilTexture.GetPinnableReference(), ref depthStencilViewDesc, depthStencilView.GetAddressOf())
+            .ThrowHResult();
+
+        //DepthStencilDesc depthStencilDesc;
+        //depthStencilDesc.DepthEnable = 1;
+        //depthStencilDesc.DepthWriteMask = DepthWriteMask.DepthWriteMaskAll;
+        //depthStencilDesc.DepthFunc = ComparisonFunc.ComparisonLess;
+        //depthStencilDesc.StencilEnable = 1;
+        //depthStencilDesc.StencilReadMask = 0xFF;
+        //depthStencilDesc.StencilWriteMask = 0xFF;
+        //depthStencilDesc.FrontFace.StencilFailOp = StencilOp.StencilOpKeep;
+        //depthStencilDesc.FrontFace.StencilDepthFailOp = StencilOp.StencilOpIncr;
+        //depthStencilDesc.FrontFace.StencilPassOp = StencilOp.StencilOpKeep;
+        //depthStencilDesc.FrontFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+        //depthStencilDesc.BackFace.StencilFailOp = StencilOp.StencilOpKeep;
+        //depthStencilDesc.BackFace.StencilDepthFailOp = StencilOp.StencilOpDecr;
+        //depthStencilDesc.BackFace.StencilPassOp = StencilOp.StencilOpKeep;
+        //depthStencilDesc.BackFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+
+        //device
+        //    ->CreateDepthStencilState(ref depthStencilDesc, depthStencilState.GetAddressOf())
+        //    .ThrowHResult();
+
     }
 
     public T Create<T>()

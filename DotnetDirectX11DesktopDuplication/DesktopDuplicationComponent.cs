@@ -17,7 +17,8 @@ public unsafe class DesktopDuplicationComponent : Component
     private ComPtr<ID3D11InputLayout> inputLayout = default;
     private ComPtr<ID3D11PixelShader> pixelShader = default;
     private ComPtr<ID3D11VertexShader> vertexShader = default;
-    
+
+    private RenderTargetComponent renderTargetComponent;
     private const int VertexCount = 6;
 
     public DesktopDuplicationComponent(ILogger<DesktopDuplicationComponent> logger)
@@ -33,9 +34,7 @@ public unsafe class DesktopDuplicationComponent : Component
         renderTargetComponent.Resize(app, windowSize);
     }
 
-    private RenderTargetComponent renderTargetComponent;
-
-    public void Draw(IApp app)
+    public override void Draw(IApp app, ICamera camera, double time)
     {
         using ComPtr<IDXGIResource> desktopResource = default;
         OutduplFrameInfo outputFrameInfo = default;
@@ -65,7 +64,7 @@ public unsafe class DesktopDuplicationComponent : Component
         app.GraphicsContext.device.GetPinnableReference()
             ->CreateShaderResourceView((ID3D11Resource*)acquiredDesktopImage.GetPinnableReference(), ref shaderResourceViewDesc, acquiredImageShaderResourceView.GetAddressOf())
             .ThrowHResult();
-     
+
         renderTargetComponent.PrepareDraw(app);
 
         var deviceContext = app.GraphicsContext.deviceContext.GetPinnableReference();
@@ -126,7 +125,7 @@ public unsafe class DesktopDuplicationComponent : Component
         logger.LogInformation("DuplicateOutput");
 
 
-        var formats = stackalloc [] { GraphicsService.GraphicsFormat }; //FormatR8G8B8A8Unorm
+        var formats = stackalloc[] { GraphicsService.GraphicsFormat }; //FormatR8G8B8A8Unorm
         dxgiOutput6
             ->DuplicateOutput1((IUnknown*)device, 0, 1, formats, outputDuplication.GetAddressOf())
             .ThrowHResult();

@@ -91,4 +91,8 @@ public unsafe class RenderTargetComponent : Component
         var backgroundColor = stackalloc[] { 1f, 0.5f, 0f, 1.0f };
         deviceContext->ClearRenderTargetView(renderTargetView.GetPinnableReference(), backgroundColor);
     }
+
+    public override void Draw(IApp app, ICamera camera, double time)
+    {
+    }
 }

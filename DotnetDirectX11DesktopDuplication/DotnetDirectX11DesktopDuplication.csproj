@@ -12,18 +12,31 @@
 	  <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
 	  <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0" />
 	  <PackageReference Include="Silk.NET.Direct3D.Compilers" Version="2.15.0" />
+	  <PackageReference Include="Silk.NET.Input" Version="2.15.0" />
 	  <PackageReference Include="Silk.NET.Windowing" Version="2.15.0" />
 	  <PackageReference Include="Silk.NET.Direct3D11" Version="2.15.0" />
 	</ItemGroup>
 
 	<ItemGroup>
+	  <None Update="MeshShader.hlsl">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="MeshShaderPS.hlsl">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	  <None Update="PixelShader.hlsl">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="SimpleShader.hlsl">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="GridShaderPS.hlsl">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
 	  <None Update="SimpleShaderPS.hlsl">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
-	  <None Update="SimpleShader.hlsl">
+	  <None Update="GridShader.hlsl">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
 	  <None Update="VertexShader.hlsl">
