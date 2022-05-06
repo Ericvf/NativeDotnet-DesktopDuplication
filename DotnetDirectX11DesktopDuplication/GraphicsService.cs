@@ -21,7 +21,7 @@ public unsafe class GraphicsService : IGraphicsService
     {
         // Init device and swapchain
         SwapChainDesc swapChainDesc;
-        swapChainDesc.BufferCount = 2;
+        swapChainDesc.BufferCount = 1;
         swapChainDesc.BufferDesc.Format = GraphicsFormat; //Format.FormatR8G8B8A8Unorm;
         swapChainDesc.BufferUsage = DXGI.UsageRenderTargetOutput;
         swapChainDesc.OutputWindow = window.Native.Win32.Value.Hwnd;

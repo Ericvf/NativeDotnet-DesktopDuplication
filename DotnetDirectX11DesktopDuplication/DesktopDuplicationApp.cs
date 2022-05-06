@@ -18,11 +18,6 @@ public class DesktopDuplicationApp : BaseApp
     bool isTrackingLeft, isTrackingRight = false;
     float px, py, sx, sy, rdx, rdy, tdx, tdy, md;
 
-    bool isLoaded = false;
-    double timeDelta = 0;
-    int fpsIncrement = 0;
-    int fps = 0;
-
     public DesktopDuplicationApp(IServiceProvider serviceProvider, IGraphicsService graphicsService, ILogger<DesktopDuplicationApp> logger)
         : base(serviceProvider, graphicsService)
     {
@@ -44,16 +39,16 @@ public class DesktopDuplicationApp : BaseApp
         input.Mice[0].MouseMove += DesktopDuplicationApp_MouseMove;
         input.Mice[0].Scroll += DesktopDuplicationApp_Scroll;
 
-        //triangle = Create<TriangleComponent>();
-        //triangle.Initialize(this);
+        triangle = Create<TriangleComponent>();
+        triangle.Initialize(this);
 
         grid = Create<GridComponent>();
         grid.Initialize(this);
 
+        stlMesh = Create<StlMeshComponent>();
         if (args.Length > 0)
         {
             await loadFile(args[0]);
-            isLoaded = true;
         }
     }
 
@@ -119,10 +114,9 @@ public class DesktopDuplicationApp : BaseApp
 
     private async Task loadFile(string fileName)
     {
-        stlMesh = Create<StlMeshComponent>();
-        await stlMesh.LoadFile(this, fileName);
+        await Task.Delay(1000);
 
-        isLoaded = true;
+        await stlMesh.LoadFile(this, fileName);
     }
 
     public override void Resize(Vector2D<int> windowSize)
@@ -140,18 +134,11 @@ public class DesktopDuplicationApp : BaseApp
         base.Resize(windowSize);
     }
 
-    public int Draw(double time)
+    public void Draw(IWindow window, double time)
     {
-        timeDelta += time;
-        if (timeDelta > 1)
-        {
-            timeDelta = 0;
-            fps = fpsIncrement;
-            fpsIncrement = 0;
-        }
-        fpsIncrement++;
+        HandleFPS(window, time);
 
-        // desktopDuplication.Draw(this, time);
+        //desktopDuplication.Draw(this, time);
 
         PrepareDraw();
 
@@ -163,13 +150,23 @@ public class DesktopDuplicationApp : BaseApp
 
         grid.Draw(this, camera, time);
 
-        if (isLoaded)
-        {
-            stlMesh.Draw(this, camera, time);
-        }
+        stlMesh.Draw(this, camera, time);
 
         base.Draw();
+    }
 
-        return fps;
+    double timeDelta = 0;
+    int fpsIncrement = 0;
+
+    private void HandleFPS(IWindow window, double time)
+    {
+        timeDelta += time;
+        if (timeDelta > 1)
+        {
+            timeDelta = 0;
+            window.Title = $"FPS: {fpsIncrement}";
+            fpsIncrement = 0;
+        }
+        fpsIncrement++;
     }
 }

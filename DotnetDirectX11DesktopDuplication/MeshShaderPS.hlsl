@@ -1,6 +1,6 @@
 static const float ambientIntensity = 1;// 0.40f;
 static const float DiffuseIntensity = 1;// 0.60f;
-static const float SpecularIntensity = 0.75f;
+static const float SpecularIntensity = 0.65f;
 
 struct PixelShaderInput
 {
@@ -18,17 +18,6 @@ float4 PS(PixelShaderInput input) : SV_TARGET
 	float4 DiffuseColor = float4(0.396, 0.74151, 0.69102, 0.8); // input.color;
 	float4 SpecColor = float4(0.297254,	0.30829,	0.306678,	0.8);
 
-	////if (input.wire.x > 0)
-	//{
-		float d = 0.02f;
-		if (input.bary.x < d
-			|| input.bary.y < d
-			|| input.bary.z < d)
-		{
-			return DiffuseColor / 2;
-		}
-	//}
-
 	float3 light = input.view;
 	float3 normal = input.norm;
 
@@ -45,6 +34,14 @@ float4 PS(PixelShaderInput input) : SV_TARGET
 		float phong = SpecularIntensity * pow(saturate(dot(R, light)), 8);
 		color += phong;
 	}
+
+	/*float d = 0.03f;
+	if (input.bary.x < d
+		|| input.bary.y < d
+		|| input.bary.z < d)
+	{
+		color /= 1.5;
+	}*/
 
 	return saturate(color);
 }

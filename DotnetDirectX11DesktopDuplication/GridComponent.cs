@@ -3,7 +3,6 @@ using Silk.NET.Core.Native;
 using Silk.NET.Direct3D.Compilers;
 using Silk.NET.Direct3D11;
 using Silk.NET.DXGI;
-using Silk.NET.Maths;
 using System.Numerics;
 
 public unsafe class GridComponent : Component
@@ -13,10 +12,14 @@ public unsafe class GridComponent : Component
     private ComPtr<ID3D11PixelShader> pixelShader = default;
     private ComPtr<ID3D11InputLayout> inputLayout = default;
     private ComPtr<ID3D11Buffer> vertexBuffer = default;
+    private ComPtr<ID3D11Buffer> vertexBuffer2 = default;
     private ComPtr<ID3D11Buffer> constantBuffer = default;
-    ModelViewProjectionConstantBuffer constantBufferData;
+    private ModelViewProjectionConstantBuffer constantBufferData;
+    private ComPtr<ID3D11DepthStencilState> depthStencilDefaultState = default;
+    private ComPtr<ID3D11DepthStencilState> depthStencilDisabledState = default;
 
     private int gridVertexCount;
+    private int gridEdgeVertexCount;
     private const int gridSize = 12;
 
     public GridComponent(ILogger<GridComponent> logger)
@@ -26,7 +29,7 @@ public unsafe class GridComponent : Component
 
     public override void Initialize(IApp app)
     {
-        var device = app.GraphicsContext.device.GetPinnableReference();
+        ref var device = ref app.GraphicsContext.device.Get();
         var compilerApi = D3DCompiler.GetApi();
 
         // Create vertex shader
@@ -38,7 +41,7 @@ public unsafe class GridComponent : Component
         logger.LogInformation("CreateVertexShader");
         ID3D10Blob* vertexShaderBlob;
         ID3D10Blob* errorMsgs;
-        fixed (char* fileName = GetAssetFullPath(@"GridShader.hlsl"))
+        fixed (char* fileName = Helpers.GetAssetFullPath(@"GridShader.hlsl"))
         {
             compilerApi.CompileFromFile(fileName
             , null
@@ -52,7 +55,7 @@ public unsafe class GridComponent : Component
             .ThrowHResult();
         }
 
-        device->CreateVertexShader(
+        device.CreateVertexShader(
             vertexShaderBlob->GetBufferPointer()
             , vertexShaderBlob->GetBufferSize()
             , null
@@ -65,7 +68,7 @@ public unsafe class GridComponent : Component
         // Pixel shader
         logger.LogInformation("CreatePixelShader");
         ID3D10Blob* pixelShaderBlob;
-        fixed (char* fileName = GetAssetFullPath(@"GridShaderPS.hlsl"))
+        fixed (char* fileName = Helpers.GetAssetFullPath(@"GridShaderPS.hlsl"))
         {
             compilerApi.CompileFromFile(fileName
                 , null
@@ -79,7 +82,7 @@ public unsafe class GridComponent : Component
             .ThrowHResult();
         }
 
-        device->CreatePixelShader(
+        device.CreatePixelShader(
             pixelShaderBlob->GetBufferPointer()
             , pixelShaderBlob->GetBufferSize()
             , null
@@ -116,8 +119,7 @@ public unsafe class GridComponent : Component
         };
 
         logger.LogInformation("CreateInputLayout");
-        device
-            ->CreateInputLayout(
+        device.CreateInputLayout(
                 inputLayouts
                 , 2
                 , vertexShaderBlob->GetBufferPointer()
@@ -135,37 +137,105 @@ public unsafe class GridComponent : Component
         cbufferDesc.BindFlags = (uint)BindFlag.BindConstantBuffer;
         cbufferDesc.CPUAccessFlags = 0;
 
-        device->CreateBuffer(ref cbufferDesc, null, constantBuffer.GetAddressOf())
+        device.CreateBuffer(ref cbufferDesc, null, constantBuffer.GetAddressOf())
             .ThrowHResult();
 
-        // Create Grid
-        gridVertexCount = (gridSize + 1) * 4;
-        var grid = CreateGrid(gridSize, 0.25f);
+        var device2 = app.GraphicsContext.device;
 
+        // Create Grid
+        var quadSize = 2f;
+        var grid = CreateGrid(gridSize, quadSize);
+        gridVertexCount = grid.Length;
+
+        CreateBuffer(ref device2, ref vertexBuffer, grid);
+
+        var halfQuadSize = quadSize / 2;
+        var v1 = new Vector3(-halfQuadSize, 0, -halfQuadSize);
+        var v2 = new Vector3(halfQuadSize,  0, -halfQuadSize);
+        var v3 = new Vector3(-halfQuadSize, 0, halfQuadSize);
+        var v4 = new Vector3(halfQuadSize,  0, halfQuadSize);
+        var cc = new Vector4(1);
+
+        var quadVertices = new VertexPositionColor[]
+        {
+            new VertexPositionColor {  Position = v1, Color = new Vector4(1) },
+            new VertexPositionColor {  Position = v2, Color = new Vector4(1) },
+            new VertexPositionColor {  Position = v3, Color = new Vector4(1) },
+            new VertexPositionColor {  Position = v3, Color = new Vector4(1) },
+            new VertexPositionColor {  Position = v2, Color = new Vector4(1) },
+            new VertexPositionColor {  Position = v4, Color = new Vector4(1) }
+        };
+
+
+        CreateBuffer(ref device2, ref vertexBuffer2, quadVertices);
+
+        DepthStencilDesc depthStencilDisabledDesc;
+        depthStencilDisabledDesc.DepthEnable = 0;
+        depthStencilDisabledDesc.DepthWriteMask = DepthWriteMask.DepthWriteMaskAll;
+        depthStencilDisabledDesc.DepthFunc = ComparisonFunc.ComparisonLess;
+        depthStencilDisabledDesc.StencilEnable = 1;
+        depthStencilDisabledDesc.StencilReadMask = 0xFF;
+        depthStencilDisabledDesc.StencilWriteMask = 0xFF;
+        depthStencilDisabledDesc.FrontFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDisabledDesc.FrontFace.StencilDepthFailOp = StencilOp.StencilOpIncr;
+        depthStencilDisabledDesc.FrontFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDisabledDesc.FrontFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+        depthStencilDisabledDesc.BackFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDisabledDesc.BackFace.StencilDepthFailOp = StencilOp.StencilOpDecr;
+        depthStencilDisabledDesc.BackFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDisabledDesc.BackFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+
+        device.CreateDepthStencilState(ref depthStencilDisabledDesc, depthStencilDisabledState.GetAddressOf())
+            .ThrowHResult();
+
+        DepthStencilDesc depthStencilDefaultDesc;
+        depthStencilDefaultDesc.DepthEnable = 1;
+        depthStencilDefaultDesc.DepthWriteMask = DepthWriteMask.DepthWriteMaskAll;
+        depthStencilDefaultDesc.DepthFunc = ComparisonFunc.ComparisonLess;
+        depthStencilDefaultDesc.StencilEnable = 1;
+        depthStencilDefaultDesc.StencilReadMask = 0xFF;
+        depthStencilDefaultDesc.StencilWriteMask = 0xFF;
+        depthStencilDefaultDesc.FrontFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDefaultDesc.FrontFace.StencilDepthFailOp = StencilOp.StencilOpIncr;
+        depthStencilDefaultDesc.FrontFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDefaultDesc.FrontFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+        depthStencilDefaultDesc.BackFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDefaultDesc.BackFace.StencilDepthFailOp = StencilOp.StencilOpDecr;
+        depthStencilDefaultDesc.BackFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDefaultDesc.BackFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+
+        device.CreateDepthStencilState(ref depthStencilDefaultDesc, depthStencilDefaultState.GetAddressOf())
+            .ThrowHResult();
+    }
+
+    private void CreateBuffer(ref ComPtr<ID3D11Device> device, ref ComPtr<ID3D11Buffer> buffer, VertexPositionColor[] vertices)
+    {
         // Vertex buffer
         var bufferDesc = new BufferDesc();
         bufferDesc.Usage = Usage.UsageDefault;
-        bufferDesc.ByteWidth = (uint)sizeof(VertexPositionColor) * (uint)gridVertexCount;
+        bufferDesc.ByteWidth = (uint)sizeof(VertexPositionColor) * (uint)vertices.Length;
         bufferDesc.BindFlags = (uint)BindFlag.BindVertexBuffer;
         bufferDesc.CPUAccessFlags = 0;
 
         var subresourceData = new SubresourceData();
-        fixed (VertexPositionColor* data = grid)
+        fixed (VertexPositionColor* data = vertices)
         {
             subresourceData.PSysMem = data;
         }
 
         logger.LogInformation("CreateBuffer (Vertex buffer)");
-        device
-            ->CreateBuffer(ref bufferDesc, ref subresourceData, vertexBuffer.GetAddressOf())
+        device.GetPinnableReference()
+            ->CreateBuffer(ref bufferDesc, ref subresourceData, buffer.GetAddressOf())
             .ThrowHResult();
     }
 
-    private VertexPositionColor[] CreateGrid(int size, float m = 4f)
+    private VertexPositionColor[] CreateGrid(int size, float mul = 1)
     {
         var vertexList = new VertexPositionColor[(size + 1) * 4];
+        var m = (1f / size) * mul;
+
         float QuadDistance = (float)size / 2;
-        var cc = Vector4.UnitZ;
+        var cc = new Vector4(0.8f);
         for (int i = 0; i < size + 1; i++)
         {
             float position = i - QuadDistance;
@@ -182,7 +252,6 @@ public unsafe class GridComponent : Component
     {
         var deviceContext = app.GraphicsContext.deviceContext.GetPinnableReference();
 
-        deviceContext->IASetPrimitiveTopology(D3DPrimitiveTopology.D3D11PrimitiveTopologyLinelist);
         deviceContext->IASetInputLayout(inputLayout);
         deviceContext->VSSetShader(vertexShader, null, 0);
         deviceContext->PSSetShader(pixelShader, null, 0);
@@ -202,11 +271,19 @@ public unsafe class GridComponent : Component
 
         deviceContext->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
 
+        deviceContext->OMSetDepthStencilState(depthStencilDisabledState.GetPinnableReference(), 1);
+
         uint stride = (uint)sizeof(VertexPositionColor);
         uint offset = 0;
+
+        deviceContext->IASetPrimitiveTopology(D3DPrimitiveTopology.D3D11PrimitiveTopologyTrianglelist);
+        deviceContext->IASetVertexBuffers(0, 1, vertexBuffer2.GetAddressOf(), ref stride, ref offset);
+        deviceContext->Draw((uint)6, 0);
+
+        deviceContext->IASetPrimitiveTopology(D3DPrimitiveTopology.D3D11PrimitiveTopologyLinelist);
         deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), ref stride, ref offset);
         deviceContext->Draw((uint)gridVertexCount, 0);
-    }
 
-    private string GetAssetFullPath(string assetName) => Path.Combine(AppContext.BaseDirectory, assetName);
+        deviceContext->OMSetDepthStencilState(depthStencilDefaultState.GetPinnableReference(), 1);
+    }
 }

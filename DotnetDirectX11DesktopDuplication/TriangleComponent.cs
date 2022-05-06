@@ -32,14 +32,6 @@ struct ModelViewProjectionWorldEyeConstantBuffer
     public Vector4 vecEye;
 };
 
-public class Helpers
-{
-    public static int RoundUp(int numToRound, int multiple)
-    {
-        return ((numToRound + multiple - 1) / multiple) * multiple;
-    }
-}
-
 public unsafe class TriangleComponent : Component
 {
     const uint VertexCount = 3;
@@ -73,7 +65,7 @@ public unsafe class TriangleComponent : Component
         logger.LogInformation("CreateVertexShader");
         ID3D10Blob* vertexShaderBlob;
         ID3D10Blob* errorMsgs;
-        fixed (char* fileName = GetAssetFullPath(@"SimpleShader.hlsl"))
+        fixed (char* fileName = Helpers.GetAssetFullPath(@"SimpleShader.hlsl"))
         {
             compilerApi.CompileFromFile(fileName
             , null
@@ -100,7 +92,7 @@ public unsafe class TriangleComponent : Component
         // Pixel shader
         logger.LogInformation("CreatePixelShader");
         ID3D10Blob* pixelShaderBlob;
-        fixed (char* fileName = GetAssetFullPath(@"SimpleShaderPS.hlsl"))
+        fixed (char* fileName = Helpers.GetAssetFullPath(@"SimpleShaderPS.hlsl"))
         {
             compilerApi.CompileFromFile(fileName
                 , null
@@ -249,5 +241,4 @@ public unsafe class TriangleComponent : Component
         deviceContext->Draw(VertexCount, 0);
     }
 
-    private string GetAssetFullPath(string assetName) => Path.Combine(AppContext.BaseDirectory, assetName);
 }

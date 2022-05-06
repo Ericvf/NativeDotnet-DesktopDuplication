@@ -17,10 +17,13 @@ public unsafe class StlMeshComponent : Component
     private ComPtr<ID3D11Buffer> indexBuffer = default;
     private ComPtr<ID3D11Buffer> constantBuffer = default;
     private ComPtr<ID3D11RasterizerState> pRSsolidFrame = default;
+    private ComPtr<ID3D11RasterizerState> pRSwireFrame = default;
 
     ModelViewProjectionWorldEyeConstantBuffer constantBufferData;
+    private int meshVertexCount;
+    private int meshIndexCount;
+    private bool isLoaded = false;
 
-    
     private const int gridSize = 16;
     private StlFile stlFile;
 
@@ -43,7 +46,7 @@ public unsafe class StlMeshComponent : Component
         logger.LogInformation("CreateVertexShader");
         ID3D10Blob* vertexShaderBlob;
         ID3D10Blob* errorMsgs;
-        fixed (char* fileName = GetAssetFullPath(@"MeshShader.hlsl"))
+        fixed (char* fileName = Helpers.GetAssetFullPath(@"MeshShader.hlsl"))
         {
             compilerApi.CompileFromFile(fileName
             , null
@@ -70,7 +73,7 @@ public unsafe class StlMeshComponent : Component
         // Pixel shader
         logger.LogInformation("CreatePixelShader");
         ID3D10Blob* pixelShaderBlob;
-        fixed (char* fileName = GetAssetFullPath(@"MeshShaderPS.hlsl"))
+        fixed (char* fileName = Helpers.GetAssetFullPath(@"MeshShaderPS.hlsl"))
         {
             compilerApi.CompileFromFile(fileName
                 , null
@@ -165,18 +168,33 @@ public unsafe class StlMeshComponent : Component
         RSSolidFrameDesc.FrontCounterClockwise = 0;
         RSSolidFrameDesc.DepthBiasClamp = 0;
         RSSolidFrameDesc.SlopeScaledDepthBias = 0;
-        RSSolidFrameDesc.DepthClipEnable = 0;
+        RSSolidFrameDesc.DepthClipEnable = 1;
         RSSolidFrameDesc.MultisampleEnable = 0;
-        RSSolidFrameDesc.AntialiasedLineEnable = 0;
+        RSSolidFrameDesc.AntialiasedLineEnable = 1;
 
         device->CreateRasterizerState(&RSSolidFrameDesc, pRSsolidFrame.GetAddressOf());
 
+        // Rasterizer
+        RasterizerDesc RSWireFrameDesc;
+        RSWireFrameDesc.FillMode = FillMode.FillWireframe;
+        RSWireFrameDesc.CullMode = CullMode.CullBack;
+        RSWireFrameDesc.ScissorEnable = 0;
+        RSWireFrameDesc.DepthBias = 0;
+        RSWireFrameDesc.FrontCounterClockwise = 0;
+        RSWireFrameDesc.DepthBiasClamp = 0;
+        RSWireFrameDesc.SlopeScaledDepthBias = 0;
+        RSWireFrameDesc.DepthClipEnable = 1;
+        RSWireFrameDesc.MultisampleEnable = 0;
+        RSWireFrameDesc.AntialiasedLineEnable = 1;
+
+        device->CreateRasterizerState(&RSWireFrameDesc, pRSwireFrame.GetAddressOf());
+
     }
-    private int meshVertexCount;
-    private int meshIndexCount;
 
     public Task LoadFile(IApp app, string fileName)
     {
+        isLoaded = false;
+
         var device = app.GraphicsContext.device.GetPinnableReference();
 
         Initialize(app);
@@ -203,22 +221,24 @@ public unsafe class StlMeshComponent : Component
             .ThrowHResult();
 
         // Index buffer
-        var ibufferDesc = new BufferDesc();
-        ibufferDesc.Usage = Usage.UsageDefault;
-        ibufferDesc.ByteWidth = sizeof(short) * (uint)meshIndexCount;
-        ibufferDesc.BindFlags = (uint)BindFlag.BindIndexBuffer;
-        ibufferDesc.CPUAccessFlags = 0;
+        var indexBufferDesc = new BufferDesc();
+        indexBufferDesc.Usage = Usage.UsageDefault;
+        indexBufferDesc.ByteWidth = sizeof(short) * (uint)meshIndexCount;
+        indexBufferDesc.BindFlags = (uint)BindFlag.BindIndexBuffer;
+        indexBufferDesc.CPUAccessFlags = 0;
 
-        var subresourceData2 = new SubresourceData();
+        var indexBufferData = new SubresourceData();
         fixed (short* data = indexData)
         {
-            subresourceData2.PSysMem = data;
+            indexBufferData.PSysMem = data;
         }
 
         logger.LogInformation("CreateBuffer (Index buffer)");
         device
-            ->CreateBuffer(ref ibufferDesc, ref subresourceData2, indexBuffer.GetAddressOf())
+            ->CreateBuffer(ref indexBufferDesc, ref indexBufferData, indexBuffer.GetAddressOf())
             .ThrowHResult();
+
+        isLoaded = true;
 
         return Task.CompletedTask;
     }
@@ -254,7 +274,7 @@ public unsafe class StlMeshComponent : Component
         var vertexData = new VertexPositionColorNormal[totalVertices];
         var indexData = new short[totalIndices];
 
-        int countNormalVertices = 0;
+        //int countNormalVertices = 0;
         int countVertices = 0;
         int countIndices = 0;
 
@@ -363,14 +383,14 @@ public unsafe class StlMeshComponent : Component
             vertexNormalData[k++] = new VertexPositionColorNormal()
             {
                 Position = new Vector3(vertexData[i].Position.X, vertexData[i].Position.Y, vertexData[i].Position.Z),
-                Color   = new Vector4(0, 0, 0,0),
+                Color = new Vector4(0, 0, 0, 0),
                 Normal = new Vector3(0, 0, 0)
             };
 
             vertexNormalData[k++] = new VertexPositionColorNormal()
             {
                 Position = new Vector3(posn.X, posn.Y, posn.Z),
-				Color   =new Vector4(0, 0, 0,0),
+                Color = new Vector4(0, 0, 0, 0),
                 Normal = new Vector3(0, 0, 0)
             };
         }
@@ -381,59 +401,53 @@ public unsafe class StlMeshComponent : Component
 
     public override void Draw(IApp app, ICamera camera, double time)
     {
-        var deviceContext = app.GraphicsContext.deviceContext.GetPinnableReference();
-        var device = app.GraphicsContext.device.GetPinnableReference();
-
-        deviceContext->IASetPrimitiveTopology(D3DPrimitiveTopology.D3D11PrimitiveTopologyTrianglelist);
-        deviceContext->IASetInputLayout(inputLayout);
-        deviceContext->VSSetShader(vertexShader, null, 0);
-        deviceContext->PSSetShader(pixelShader, null, 0);
-
-        //var translationMatrix = Matrix.Identity;// Matrix.CreateTranslation(stlFile.translate.X, stlFile.translate.Y + (stlFile.msize.Y / 2), stlFile.translate.Z);
-        var translationMatrix = Matrix.CreateTranslation(stlFile.translate.X, stlFile.translate.Y + (stlFile.msize.Y / 2), stlFile.translate.Z);
-        var scaleMatrix = Matrix.CreateScale(stlFile.scale);
-        var rotationMatrix = camera.GetRotation();
-
-        var correctedModelMatrix = (translationMatrix * scaleMatrix);
-        var modelMatrix = correctedModelMatrix * rotationMatrix;
-        var viewMatrix = camera.GetView();
-        var projectionMatrix = camera.GetProjection();
-        var eye = camera.GetEye();
-
-        constantBufferData.model = Matrix.Transpose(modelMatrix);
-        constantBufferData.view = Matrix.Transpose(viewMatrix);
-        constantBufferData.projection = Matrix.Transpose(projectionMatrix);
-
-        if (Matrix.Invert(rotationMatrix, out Matrix inverted))
-            constantBufferData.WorldInverseTranspose = Matrix.Transpose(inverted);
-
-        constantBufferData.vecEye = eye * -1;
-
-        fixed (ModelViewProjectionWorldEyeConstantBuffer* data = &constantBufferData)
+        if (isLoaded)
         {
-            deviceContext->UpdateSubresource((ID3D11Resource*)constantBuffer.GetPinnableReference(), 0, null, data, 0, 0);
+            var deviceContext = app.GraphicsContext.deviceContext.GetPinnableReference();
+            var device = app.GraphicsContext.device.GetPinnableReference();
+
+            deviceContext->IASetPrimitiveTopology(D3DPrimitiveTopology.D3D11PrimitiveTopologyTrianglelist);
+            deviceContext->IASetInputLayout(inputLayout);
+            deviceContext->VSSetShader(vertexShader, null, 0);
+            deviceContext->PSSetShader(pixelShader, null, 0);
+
+            //var translationMatrix = Matrix.Identity;
+            var translationMatrix = Matrix.CreateTranslation(stlFile.translate.X, stlFile.translate.Y + (stlFile.msize.Y / 2), stlFile.translate.Z);
+            var scaleMatrix = Matrix.CreateScale(stlFile.scale);
+            var rotationMatrix = camera.GetRotation();
+
+            var correctedModelMatrix = (translationMatrix * scaleMatrix);
+            var modelMatrix = correctedModelMatrix * rotationMatrix;
+            var viewMatrix = camera.GetView();
+            var projectionMatrix = camera.GetProjection();
+            var eye = camera.GetEye();
+
+            constantBufferData.model = Matrix.Transpose(modelMatrix);
+            constantBufferData.view = Matrix.Transpose(viewMatrix);
+            constantBufferData.projection = Matrix.Transpose(projectionMatrix);
+
+            if (Matrix.Invert(rotationMatrix, out Matrix inverted))
+                constantBufferData.WorldInverseTranspose = Matrix.Transpose(inverted);
+
+            constantBufferData.vecEye = eye * -1;
+
+            fixed (ModelViewProjectionWorldEyeConstantBuffer* data = &constantBufferData)
+            {
+                deviceContext->UpdateSubresource((ID3D11Resource*)constantBuffer.GetPinnableReference(), 0, null, data, 0, 0);
+            }
+
+            uint stride = (uint)sizeof(VertexPositionColorNormal);
+            uint offset = 0;
+
+            deviceContext->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
+            deviceContext->RSSetState(pRSsolidFrame);
+
+            deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), ref stride, ref offset);
+
+            //deviceContext->IASetIndexBuffer(indexBuffer, Format.FormatR16Uint, 0);
+            //deviceContext->DrawIndexed((uint)meshIndexCount, 0, 0);
+
+            deviceContext->Draw((uint)meshVertexCount, 0);
         }
-
-        deviceContext->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
-        deviceContext->RSSetState(pRSsolidFrame);
-
-        uint stride = (uint)sizeof(VertexPositionColorNormal);
-        uint offset = 0;
-        deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), ref stride, ref offset);
-
-        //deviceContext->IASetIndexBuffer(indexBuffer, Format.FormatR16Uint, 0);
-        //deviceContext->DrawIndexed((uint)meshIndexCount, 0, 0);
-
-        deviceContext->Draw((uint)meshVertexCount, 0);
     }
-
-    private string GetAssetFullPath(string assetName) => Path.Combine(AppContext.BaseDirectory, assetName);
-
-
 }
-struct VertexPositionColorNormal
-{
-    public Vector3 Position;
-    public Vector4 Color;
-    public Vector3 Normal;
-};

@@ -7,6 +7,8 @@ public class Camera : ICamera
     private float rdx, rdy, tdx, tdy, rx, ry, tx, ty;
     private float md;
 
+    private Vector3 position = new Vector3(0, 0, 2);
+
     public Matrix4x4 GetProjection()
     {
         float fovAngleY = 70 * MathF.PI / 180.0f;
@@ -20,14 +22,12 @@ public class Camera : ICamera
         return Matrix4x4.CreateRotationY(radiansY) * Matrix4x4.CreateRotationX(radiansX);
     }
 
-    public Vector3 Position => new Vector3(0, 0, 2);
-
     public Matrix4x4 GetView()
     {
         var tdx = (this.tdx + tx) / 500;
         var tdy = (this.tdy + ty) / 500;
 
-        var pos = Position + new Vector3(-tdx, tdy, 0) + new Vector3(0, 0, md);
+        var pos = position + new Vector3(-tdx, tdy, 0) + new Vector3(0, 0, md);
         var at = new Vector3() + new Vector3(-tdx, tdy, 0);
 
         return Matrix4x4.CreateLookAt(pos, at, new Vector3(0, 1, 0));
@@ -45,7 +45,6 @@ public class Camera : ICamera
         this.tdx += (tdx - this.tdx) / 10;
         this.tdy += (tdy - this.tdy) / 10;
         this.md += (md - this.md) / 10;
-        Console.WriteLine(tdy);
     }
 
     public void SetRotation(float rx, float ry)
@@ -66,6 +65,6 @@ public class Camera : ICamera
 
     public Vector4 GetEye()
     {
-        return new Vector4(Position,0) + new Vector4(0,0, md, 0);
+        return new Vector4(position,0) + new Vector4(0,0, md, 0);
     }
 }

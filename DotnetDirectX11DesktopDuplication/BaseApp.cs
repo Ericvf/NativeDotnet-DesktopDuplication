@@ -65,8 +65,7 @@ public unsafe class BaseApp : IApp
 
         deviceContext->OMSetRenderTargets(1, backBufferRenderTargetView.GetAddressOf(), depthStencilView.GetPinnableReference());
 
-        var backgroundColor = stackalloc[] { 1f, 1f, 1.0f, 1.0f };
-
+        var backgroundColor = stackalloc[] { 0.850f, 0.900f, 0.950f, 1.0f };
 
         deviceContext->ClearRenderTargetView(backBufferRenderTargetView.GetPinnableReference(), backgroundColor);
 
@@ -130,26 +129,25 @@ public unsafe class BaseApp : IApp
             ->CreateDepthStencilView((ID3D11Resource*)depthStencilTexture.GetPinnableReference(), ref depthStencilViewDesc, depthStencilView.GetAddressOf())
             .ThrowHResult();
 
-        //DepthStencilDesc depthStencilDesc;
-        //depthStencilDesc.DepthEnable = 1;
-        //depthStencilDesc.DepthWriteMask = DepthWriteMask.DepthWriteMaskAll;
-        //depthStencilDesc.DepthFunc = ComparisonFunc.ComparisonLess;
-        //depthStencilDesc.StencilEnable = 1;
-        //depthStencilDesc.StencilReadMask = 0xFF;
-        //depthStencilDesc.StencilWriteMask = 0xFF;
-        //depthStencilDesc.FrontFace.StencilFailOp = StencilOp.StencilOpKeep;
-        //depthStencilDesc.FrontFace.StencilDepthFailOp = StencilOp.StencilOpIncr;
-        //depthStencilDesc.FrontFace.StencilPassOp = StencilOp.StencilOpKeep;
-        //depthStencilDesc.FrontFace.StencilFunc = ComparisonFunc.ComparisonAlways;
-        //depthStencilDesc.BackFace.StencilFailOp = StencilOp.StencilOpKeep;
-        //depthStencilDesc.BackFace.StencilDepthFailOp = StencilOp.StencilOpDecr;
-        //depthStencilDesc.BackFace.StencilPassOp = StencilOp.StencilOpKeep;
-        //depthStencilDesc.BackFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+        DepthStencilDesc depthStencilDesc;
+        depthStencilDesc.DepthEnable = 1;
+        depthStencilDesc.DepthWriteMask = DepthWriteMask.DepthWriteMaskAll;
+        depthStencilDesc.DepthFunc = ComparisonFunc.ComparisonLess;
+        depthStencilDesc.StencilEnable = 1;
+        depthStencilDesc.StencilReadMask = 0xFF;
+        depthStencilDesc.StencilWriteMask = 0xFF;
+        depthStencilDesc.FrontFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDesc.FrontFace.StencilDepthFailOp = StencilOp.StencilOpIncr;
+        depthStencilDesc.FrontFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDesc.FrontFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+        depthStencilDesc.BackFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDesc.BackFace.StencilDepthFailOp = StencilOp.StencilOpDecr;
+        depthStencilDesc.BackFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDesc.BackFace.StencilFunc = ComparisonFunc.ComparisonAlways;
 
-        //device
-        //    ->CreateDepthStencilState(ref depthStencilDesc, depthStencilState.GetAddressOf())
-        //    .ThrowHResult();
-
+        device
+            ->CreateDepthStencilState(ref depthStencilDesc, depthStencilState.GetAddressOf())
+            .ThrowHResult();
     }
 
     public T Create<T>()

@@ -4,7 +4,6 @@ using Silk.NET.Direct3D.Compilers;
 using Silk.NET.Direct3D11;
 using Silk.NET.DXGI;
 using Silk.NET.Maths;
-using Silk.NET.Windowing;
 using System.Numerics;
 
 public unsafe class DesktopDuplicationComponent : Component
@@ -141,7 +140,7 @@ public unsafe class DesktopDuplicationComponent : Component
         logger.LogInformation("CreateVertexShader");
         ID3D10Blob* vertexShaderBlob;
         ID3D10Blob* errorMsgs;
-        fixed (char* fileName = GetAssetFullPath(@"VertexShader.hlsl"))
+        fixed (char* fileName = Helpers.GetAssetFullPath(@"VertexShader.hlsl"))
         {
             compilerApi.CompileFromFile(fileName
             , null
@@ -168,7 +167,7 @@ public unsafe class DesktopDuplicationComponent : Component
         // Pixel shader
         logger.LogInformation("CreatePixelShader");
         ID3D10Blob* pixelShaderBlob;
-        fixed (char* fileName = GetAssetFullPath(@"PixelShader.hlsl"))
+        fixed (char* fileName = Helpers.GetAssetFullPath(@"PixelShader.hlsl"))
         {
             compilerApi.CompileFromFile(fileName
                 , null
@@ -261,6 +260,4 @@ public unsafe class DesktopDuplicationComponent : Component
             ->CreateBuffer(ref bufferDesc, ref subresourceData, vertexBuffer.GetAddressOf())
             .ThrowHResult();
     }
-
-    private string GetAssetFullPath(string assetName) => Path.Combine(AppContext.BaseDirectory, assetName);
 }
