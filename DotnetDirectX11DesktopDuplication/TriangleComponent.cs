@@ -3,34 +3,7 @@ using Silk.NET.Core.Native;
 using Silk.NET.Direct3D.Compilers;
 using Silk.NET.Direct3D11;
 using Silk.NET.DXGI;
-using Silk.NET.Maths;
 using System.Numerics;
-
-struct VertexPositionColor
-{
-    public Vector3 Position;
-    public Vector4 Color;
-};
-
-
-
-//[StructLayout(LayoutKind.Sequential, Pack = 16)]
-struct ModelViewProjectionConstantBuffer
-{
-    public Matrix4x4 model;
-    public Matrix4x4 view;
-    public Matrix4x4 projection;
-};
-
-struct ModelViewProjectionWorldEyeConstantBuffer
-{
-    public Matrix4x4 model;
-    public Matrix4x4 view;
-    public Matrix4x4 projection;
-
-    public Matrix4x4 WorldInverseTranspose;
-    public Vector4 vecEye;
-};
 
 public unsafe class TriangleComponent : Component
 {
@@ -207,7 +180,6 @@ public unsafe class TriangleComponent : Component
         device->CreateRasterizerState(&RSSolidFrameDesc, pRSsolidFrame.GetAddressOf());
     }
 
-
     public override void Draw(IApp app, ICamera camera, double time)
     {
         var deviceContext = app.GraphicsContext.deviceContext.GetPinnableReference();
@@ -240,5 +212,4 @@ public unsafe class TriangleComponent : Component
         deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), ref stride, ref offset);
         deviceContext->Draw(VertexCount, 0);
     }
-
 }

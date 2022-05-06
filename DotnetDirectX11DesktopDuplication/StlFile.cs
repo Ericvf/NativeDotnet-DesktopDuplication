@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text;
-using static System.Net.WebRequestMethods;
 
 /// <summary>
 /// https://www.loc.gov/preservation/digital/formats/fdd/fdd000504.shtml

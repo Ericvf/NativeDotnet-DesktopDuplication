@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
+using Silk.NET.Core.Native;
+using Silk.NET.Direct3D11;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
@@ -26,12 +28,15 @@ public class DesktopDuplicationApp : BaseApp
         camera = new Camera();
     }
 
+    private ComPtr<ID3D11DepthStencilState> depthStencilDefaultState = default;
+    private ComPtr<ID3D11DepthStencilState> depthStencilDisabledState = default;
+
     public async override Task Initialize(IWindow window, string[] args)
     {
         await base.Initialize(window, args);
 
-        // desktopDuplication = Create<DesktopDuplicationComponent>();
-        // desktopDuplication.Initialize(this);
+        desktopDuplication = Create<DesktopDuplicationComponent>();
+        desktopDuplication.Initialize(this);
 
         input = window.CreateInput();
         input.Mice[0].MouseDown += DesktopDuplicationApp_MouseDown;
@@ -44,12 +49,57 @@ public class DesktopDuplicationApp : BaseApp
 
         grid = Create<GridComponent>();
         grid.Initialize(this);
+        InitializeDepthStencils();
 
         stlMesh = Create<StlMeshComponent>();
         if (args.Length > 0)
         {
             await loadFile(args[0]);
         }
+
+    }
+
+    private unsafe void InitializeDepthStencils()
+    {
+        ref var device = ref GraphicsContext.device.Get();
+
+        DepthStencilDesc depthStencilDisabledDesc;
+        depthStencilDisabledDesc.DepthEnable = 0;
+        depthStencilDisabledDesc.DepthWriteMask = DepthWriteMask.DepthWriteMaskAll;
+        depthStencilDisabledDesc.DepthFunc = ComparisonFunc.ComparisonLess;
+        depthStencilDisabledDesc.StencilEnable = 1;
+        depthStencilDisabledDesc.StencilReadMask = 0xFF;
+        depthStencilDisabledDesc.StencilWriteMask = 0xFF;
+        depthStencilDisabledDesc.FrontFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDisabledDesc.FrontFace.StencilDepthFailOp = StencilOp.StencilOpIncr;
+        depthStencilDisabledDesc.FrontFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDisabledDesc.FrontFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+        depthStencilDisabledDesc.BackFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDisabledDesc.BackFace.StencilDepthFailOp = StencilOp.StencilOpDecr;
+        depthStencilDisabledDesc.BackFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDisabledDesc.BackFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+
+        device.CreateDepthStencilState(ref depthStencilDisabledDesc, ref depthStencilDisabledState.GetPinnableReference())
+            .ThrowHResult();
+
+        DepthStencilDesc depthStencilDefaultDesc;
+        depthStencilDefaultDesc.DepthEnable = 1;
+        depthStencilDefaultDesc.DepthWriteMask = DepthWriteMask.DepthWriteMaskAll;
+        depthStencilDefaultDesc.DepthFunc = ComparisonFunc.ComparisonLess;
+        depthStencilDefaultDesc.StencilEnable = 1;
+        depthStencilDefaultDesc.StencilReadMask = 0xFF;
+        depthStencilDefaultDesc.StencilWriteMask = 0xFF;
+        depthStencilDefaultDesc.FrontFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDefaultDesc.FrontFace.StencilDepthFailOp = StencilOp.StencilOpIncr;
+        depthStencilDefaultDesc.FrontFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDefaultDesc.FrontFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+        depthStencilDefaultDesc.BackFace.StencilFailOp = StencilOp.StencilOpKeep;
+        depthStencilDefaultDesc.BackFace.StencilDepthFailOp = StencilOp.StencilOpDecr;
+        depthStencilDefaultDesc.BackFace.StencilPassOp = StencilOp.StencilOpKeep;
+        depthStencilDefaultDesc.BackFace.StencilFunc = ComparisonFunc.ComparisonAlways;
+
+        device.CreateDepthStencilState(ref depthStencilDefaultDesc, depthStencilDefaultState.GetAddressOf())
+            .ThrowHResult();
     }
 
     private void DesktopDuplicationApp_Scroll(IMouse arg1, ScrollWheel arg2)
@@ -64,13 +114,13 @@ public class DesktopDuplicationApp : BaseApp
 
         if (isTrackingLeft)
         {
-            rdx = arg2.X - sx;
-            rdy = arg2.Y - sy;
+            rdx = px - sx;
+            rdy = py - sy;
         }
         else if (isTrackingRight)
         {
-            tdx = arg2.X - sx;
-            tdy = arg2.Y - sy;
+            tdx = px - sx;
+            tdy = py - sy;
         }
     }
 
@@ -114,7 +164,7 @@ public class DesktopDuplicationApp : BaseApp
 
     private async Task loadFile(string fileName)
     {
-        await Task.Delay(1000);
+        await Task.Delay(1);
 
         await stlMesh.LoadFile(this, fileName);
     }
@@ -134,15 +184,17 @@ public class DesktopDuplicationApp : BaseApp
         base.Resize(windowSize);
     }
 
-    public void Draw(IWindow window, double time)
+    public unsafe void Draw(IWindow window, double time)
     {
         HandleFPS(window, time);
 
-        //desktopDuplication.Draw(this, time);
+        //desktopDuplication.Draw(this, camera, time);
 
         PrepareDraw();
 
-        //var deviceContext = GraphicsContext.deviceContext.GetPinnableReference();
+        var deviceContext = GraphicsContext.deviceContext.GetPinnableReference();
+        //deviceContext->OMSetDepthStencilState(depthStencilDisabledState.GetPinnableReference(), 1);
+        //deviceContext->OMSetDepthStencilState(depthStencilDefaultState.GetPinnableReference(), 1);
         //deviceContext->PSSetShaderResources(0, 1, desktopDuplication.RenderTarget.GetAddressOf());
         //deviceContext->Draw(6, 0);
 
@@ -155,17 +207,17 @@ public class DesktopDuplicationApp : BaseApp
         base.Draw();
     }
 
-    double timeDelta = 0;
-    int fpsIncrement = 0;
+    private double timeDelta = 0;
+    private int fpsIncrement = 0;
 
     private void HandleFPS(IWindow window, double time)
     {
         timeDelta += time;
         if (timeDelta > 1)
         {
-            timeDelta = 0;
             window.Title = $"FPS: {fpsIncrement}";
             fpsIncrement = 0;
+            timeDelta = 0;
         }
         fpsIncrement++;
     }

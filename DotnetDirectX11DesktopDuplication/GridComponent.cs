@@ -18,8 +18,8 @@ public unsafe class GridComponent : Component
     private ComPtr<ID3D11DepthStencilState> depthStencilDefaultState = default;
     private ComPtr<ID3D11DepthStencilState> depthStencilDisabledState = default;
 
-    private int gridVertexCount;
-    private int gridEdgeVertexCount;
+    private uint gridEdgeVertexCount = 6;
+    private uint gridVertexCount;
     private const int gridSize = 12;
 
     public GridComponent(ILogger<GridComponent> logger)
@@ -145,7 +145,7 @@ public unsafe class GridComponent : Component
         // Create Grid
         var quadSize = 2f;
         var grid = CreateGrid(gridSize, quadSize);
-        gridVertexCount = grid.Length;
+        gridVertexCount = (uint)grid.Length;
 
         CreateBuffer(ref device2, ref vertexBuffer, grid);
 
@@ -251,10 +251,8 @@ public unsafe class GridComponent : Component
     public override void Draw(IApp app, ICamera camera, double time)
     {
         var deviceContext = app.GraphicsContext.deviceContext.GetPinnableReference();
-
-        deviceContext->IASetInputLayout(inputLayout);
-        deviceContext->VSSetShader(vertexShader, null, 0);
-        deviceContext->PSSetShader(pixelShader, null, 0);
+        uint stride = (uint)sizeof(VertexPositionColor);
+        uint offset = 0;
 
         var modelMatrix = camera.GetRotation();
         var viewMatrix = camera.GetView();
@@ -263,26 +261,26 @@ public unsafe class GridComponent : Component
         constantBufferData.model = Matrix4x4.Transpose(modelMatrix);
         constantBufferData.view = Matrix4x4.Transpose(viewMatrix);
         constantBufferData.projection = Matrix4x4.Transpose(projectionMatrix);
-
         fixed (ModelViewProjectionConstantBuffer* data = &constantBufferData)
         {
             deviceContext->UpdateSubresource((ID3D11Resource*)constantBuffer.GetPinnableReference(), 0, null, data, 0, 0);
         }
 
+        deviceContext->IASetInputLayout(inputLayout);
+        deviceContext->VSSetShader(vertexShader, null, 0);
+        deviceContext->PSSetShader(pixelShader, null, 0);
+
         deviceContext->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
 
         deviceContext->OMSetDepthStencilState(depthStencilDisabledState.GetPinnableReference(), 1);
 
-        uint stride = (uint)sizeof(VertexPositionColor);
-        uint offset = 0;
-
         deviceContext->IASetPrimitiveTopology(D3DPrimitiveTopology.D3D11PrimitiveTopologyTrianglelist);
         deviceContext->IASetVertexBuffers(0, 1, vertexBuffer2.GetAddressOf(), ref stride, ref offset);
-        deviceContext->Draw((uint)6, 0);
+        deviceContext->Draw(gridEdgeVertexCount, 0);
 
         deviceContext->IASetPrimitiveTopology(D3DPrimitiveTopology.D3D11PrimitiveTopologyLinelist);
         deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), ref stride, ref offset);
-        deviceContext->Draw((uint)gridVertexCount, 0);
+        deviceContext->Draw(gridVertexCount, 0);
 
         deviceContext->OMSetDepthStencilState(depthStencilDefaultState.GetPinnableReference(), 1);
     }

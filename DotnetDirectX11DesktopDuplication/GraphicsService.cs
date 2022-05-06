@@ -48,8 +48,3 @@ public unsafe class GraphicsService : IGraphicsService
             .ThrowHResult();
     }
 }
-
-public interface IGraphicsService
-{
-    void InitializeWindow(IWindow window, ref GraphicsContext graphicsContext);
-}

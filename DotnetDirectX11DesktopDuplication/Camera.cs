@@ -1,5 +1,6 @@
 ﻿using Silk.NET.Maths;
 using System.Numerics;
+using Matrix = System.Numerics.Matrix4x4;
 
 public class Camera : ICamera
 {
@@ -9,20 +10,20 @@ public class Camera : ICamera
 
     private Vector3 position = new Vector3(0, 0, 2);
 
-    public Matrix4x4 GetProjection()
+    public Matrix GetProjection()
     {
         float fovAngleY = 70 * MathF.PI / 180.0f;
-        return Matrix4x4.CreatePerspectiveFieldOfView(fovAngleY, aspectRatio, 0.01f, 1000f);
+        return Matrix.CreatePerspectiveFieldOfView(fovAngleY, aspectRatio, 0.01f, 1000f);
     }
 
-    public Matrix4x4 GetRotation()
+    public Matrix GetRotation()
     {
         float radiansX = (ry + rdy) / 250;
         float radiansY = (rx + rdx) / 250;
-        return Matrix4x4.CreateRotationY(radiansY) * Matrix4x4.CreateRotationX(radiansX);
+        return Matrix.CreateRotationY(radiansY) * Matrix.CreateRotationX(radiansX);
     }
 
-    public Matrix4x4 GetView()
+    public Matrix GetView()
     {
         var tdx = (this.tdx + tx) / 500;
         var tdy = (this.tdy + ty) / 500;
@@ -30,12 +31,12 @@ public class Camera : ICamera
         var pos = position + new Vector3(-tdx, tdy, 0) + new Vector3(0, 0, md);
         var at = new Vector3() + new Vector3(-tdx, tdy, 0);
 
-        return Matrix4x4.CreateLookAt(pos, at, new Vector3(0, 1, 0));
+        return Matrix.CreateLookAt(pos, at, new Vector3(0, 1, 0));
     }
 
     public void Resize(Vector2D<int> windowSize)
     {
-        aspectRatio = (float)windowSize.X / (float)windowSize.Y;
+        aspectRatio = windowSize.X / (float)windowSize.Y;
     }
 
     public void Update(float rdx, float rdy, float tdx, float tdy, float md)

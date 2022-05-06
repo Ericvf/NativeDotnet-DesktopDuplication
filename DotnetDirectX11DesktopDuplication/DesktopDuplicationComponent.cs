@@ -38,7 +38,7 @@ public unsafe class DesktopDuplicationComponent : Component
         using ComPtr<IDXGIResource> desktopResource = default;
         OutduplFrameInfo outputFrameInfo = default;
 
-        var hr = (uint)outputDuplication.GetPinnableReference()->AcquireNextFrame(16, ref outputFrameInfo, desktopResource.GetAddressOf());
+        var hr = (uint)outputDuplication.GetPinnableReference()->AcquireNextFrame(100, ref outputFrameInfo, desktopResource.GetAddressOf());
 
         if (hr == 0x887a0027)
             return;
@@ -122,8 +122,6 @@ public unsafe class DesktopDuplicationComponent : Component
         dxgiOutput->Release();
 
         logger.LogInformation("DuplicateOutput");
-
-
         var formats = stackalloc[] { GraphicsService.GraphicsFormat }; //FormatR8G8B8A8Unorm
         dxgiOutput6
             ->DuplicateOutput1((IUnknown*)device, 0, 1, formats, outputDuplication.GetAddressOf())
