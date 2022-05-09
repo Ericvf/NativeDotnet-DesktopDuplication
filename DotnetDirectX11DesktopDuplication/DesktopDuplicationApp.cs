@@ -188,11 +188,11 @@ public class DesktopDuplicationApp : BaseApp
     {
         HandleFPS(window, time);
 
-        //desktopDuplication.Draw(this, camera, time);
+        desktopDuplication.Draw(this, camera, time);
 
         PrepareDraw();
 
-        var deviceContext = GraphicsContext.deviceContext.GetPinnableReference();
+        //var deviceContext = GraphicsContext.deviceContext.GetPinnableReference();
         //deviceContext->OMSetDepthStencilState(depthStencilDisabledState.GetPinnableReference(), 1);
         //deviceContext->OMSetDepthStencilState(depthStencilDefaultState.GetPinnableReference(), 1);
         //deviceContext->PSSetShaderResources(0, 1, desktopDuplication.RenderTarget.GetAddressOf());

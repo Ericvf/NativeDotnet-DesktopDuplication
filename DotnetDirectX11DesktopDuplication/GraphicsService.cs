@@ -19,6 +19,37 @@ public unsafe class GraphicsService : IGraphicsService
 
     public void InitializeWindow(IWindow window, ref GraphicsContext graphicsContext)
     {
+        //const uint DXGI_ERROR_NOT_FOUND = 0x887A0002;
+        //var dxgiApi = DXGI.GetApi();
+
+        //using ComPtr<IDXGIFactory> pFactory = default;
+        //using ComPtr<IDXGIAdapter> pAdapter = default;
+
+        //dxgiApi.CreateDXGIFactory(IDXGIFactory.Guid.Pointer(), (void**)pFactory.GetAddressOf())
+        //    .ThrowHResult();
+
+        //var adapters = new List<ComPtr<IDXGIAdapter>>();
+        //int numAdapters = -1;
+        //int result = 0;
+
+        //do
+        //{
+        //    ++numAdapters;
+
+        //    result = pFactory.Get().EnumAdapters((uint)numAdapters, pAdapter.GetAddressOf());
+        //    if ((uint)result != DXGI_ERROR_NOT_FOUND)
+        //    {
+        //        adapters.Add(pAdapter);
+        //    }
+        //}
+        //while ((uint)result != DXGI_ERROR_NOT_FOUND);
+
+        //foreach (var adapter in adapters)
+        //{
+        //    AdapterDesc adapterDesc;
+        //    adapter.Get().GetDesc(&adapterDesc);
+        //}
+
         // Init device and swapchain
         SwapChainDesc swapChainDesc;
         swapChainDesc.BufferCount = 1;
@@ -33,7 +64,7 @@ public unsafe class GraphicsService : IGraphicsService
 
         logger.LogInformation("CreateDeviceAndSwapChain");
         dx11api.CreateDeviceAndSwapChain(
-            null
+           null
             , D3DDriverType.D3DDriverTypeHardware
             , 0
             , (uint)createDeviceFlags
