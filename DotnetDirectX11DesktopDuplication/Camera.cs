@@ -20,8 +20,10 @@ public class Camera : ICamera
     {
         float radiansX = (ry + rdy) / 250;
         float radiansY = (rx + rdx) / 250;
-        return Matrix.CreateRotationY(radiansY) * Matrix.CreateRotationX(radiansX);
+        return Matrix.CreateRotationY(ryy) * Matrix.CreateRotationY(radiansY) * Matrix.CreateRotationX(radiansX);
     }
+
+    private float ryy = 0;
 
     public Matrix GetView()
     {
@@ -39,13 +41,16 @@ public class Camera : ICamera
         aspectRatio = windowSize.X / (float)windowSize.Y;
     }
 
-    public void Update(float rdx, float rdy, float tdx, float tdy, float md)
+    public void Update(float rdx, float rdy, float tdx, float tdy, float md, double time)
     {
-        this.rdx += (rdx - this.rdx) / 10;
-        this.rdy += (rdy - this.rdy) / 10;
-        this.tdx += (tdx - this.tdx) / 10;
-        this.tdy += (tdy - this.tdy) / 10;
-        this.md += (md - this.md) / 10;
+        int f = 5;
+        this.rdx += (rdx - this.rdx) / f;
+        this.rdy += (rdy - this.rdy) / f;
+        this.tdx += (tdx - this.tdx) / f;
+        this.tdy += (tdy - this.tdy) / f;
+        this.md += (md - this.md) / f;
+
+        //this.ryy += (float)time;
     }
 
     public void SetRotation(float rx, float ry)

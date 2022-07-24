@@ -6,16 +6,20 @@ using Silk.NET.Windowing;
 
 var windowOptions = WindowOptions.Default;
 windowOptions.API = GraphicsAPI.None;
+windowOptions.FramesPerSecond = 240;
+windowOptions.UpdatesPerSecond = 60;
+windowOptions.VSync = false;
 windowOptions.Size = new Vector2D<int>(1200, 800);
 
 var serviceProvider = BuildServiceProvider();
 var app = serviceProvider.GetRequiredService<DesktopDuplicationApp>();
 
-using var window = Window.Create(windowOptions);
+//Window.PrioritizeSdl();
 
+using var window = Window.Create(windowOptions);
 window.Load += async () => await app.Initialize(window, args);
 window.Resize += s => app.Resize(s);
-window.Update += t => app.Update(t);
+window.Update += t => app.Update(window, t);
 window.Render += t => app.Draw(window, t);
 window.Run();
 

@@ -4,6 +4,7 @@ using Silk.NET.Direct3D11;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
+using System.Diagnostics;
 using System.Numerics;
 
 public class DesktopDuplicationApp : BaseApp
@@ -31,12 +32,13 @@ public class DesktopDuplicationApp : BaseApp
     private ComPtr<ID3D11DepthStencilState> depthStencilDefaultState = default;
     private ComPtr<ID3D11DepthStencilState> depthStencilDisabledState = default;
 
+
     public async override Task Initialize(IWindow window, string[] args)
     {
         await base.Initialize(window, args);
 
-        desktopDuplication = Create<DesktopDuplicationComponent>();
-        desktopDuplication.Initialize(this);
+        //desktopDuplication = Create<DesktopDuplicationComponent>();
+        //desktopDuplication.Initialize(this);
 
         input = window.CreateInput();
         input.Mice[0].MouseDown += DesktopDuplicationApp_MouseDown;
@@ -56,7 +58,6 @@ public class DesktopDuplicationApp : BaseApp
         {
             await loadFile(args[0]);
         }
-
     }
 
     private unsafe void InitializeDepthStencils()
@@ -157,9 +158,20 @@ public class DesktopDuplicationApp : BaseApp
         }
     }
 
-    public void Update(double t)
+    public void Update(IWindow window, double time)
     {
-        camera.Update(rdx, rdy, tdx, tdy, md);
+        timeDelta += time;
+
+        if (nexttime < timeDelta)
+        {
+            nexttime = timeDelta + (1f / window.UpdatesPerSecond);
+
+            camera.Update(rdx, rdy, tdx, tdy, md, time);
+
+            //HandleFPS(window, time);
+        }
+        else 
+        Thread.Sleep(1);
     }
 
     private async Task loadFile(string fileName)
@@ -184,13 +196,36 @@ public class DesktopDuplicationApp : BaseApp
         base.Resize(windowSize);
     }
 
+    double nexttime = 0;
+    double nexttime2 = 0;
+
     public unsafe void Draw(IWindow window, double time)
     {
-        HandleFPS(window, time);
-
-        desktopDuplication.Draw(this, camera, time);
+        timeDelta2 += time;
 
         PrepareDraw();
+
+        if (nexttime2 < timeDelta2)
+        {
+            nexttime2 = timeDelta2 + (1f / window.FramesPerSecond);
+
+            //var sw = new Stopwatch();
+            //sw.Start();
+
+            grid.Draw(this, camera, time);
+
+            stlMesh.Draw(this, camera, time);
+
+            base.Draw();
+
+            HandleFPS2(window, time);
+            //sw.Stop();
+        }
+        
+        else
+            Thread.Sleep(1);
+        //desktopDuplication.Draw(this, camera, time);
+
 
         //var deviceContext = GraphicsContext.deviceContext.GetPinnableReference();
         //deviceContext->OMSetDepthStencilState(depthStencilDisabledState.GetPinnableReference(), 1);
@@ -200,25 +235,45 @@ public class DesktopDuplicationApp : BaseApp
 
         //triangle.Draw(this, camera, time);
 
-        grid.Draw(this, camera, time);
 
-        stlMesh.Draw(this, camera, time);
 
-        base.Draw();
+
+
     }
+
+    private double timeDelta2 = 0;
+    private int fpsIncrement2 = 0;
+
+    private void HandleFPS2(IWindow window, double time)
+    {
+        if (timeDelta2 > 1)
+        {
+            window.Title = $"FPS2: {fpsIncrement2}";
+            fpsIncrement2 = 0;
+            timeDelta2 = 0;
+            nexttime2 = 0;
+        }
+
+        fpsIncrement2++;
+    }
+
+
 
     private double timeDelta = 0;
     private int fpsIncrement = 0;
 
     private void HandleFPS(IWindow window, double time)
     {
-        timeDelta += time;
         if (timeDelta > 1)
         {
             window.Title = $"FPS: {fpsIncrement}";
             fpsIncrement = 0;
             timeDelta = 0;
+            nexttime2 = 0;
         }
+
         fpsIncrement++;
     }
+
+
 }

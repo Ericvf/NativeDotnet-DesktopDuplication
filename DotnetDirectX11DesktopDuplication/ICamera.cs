@@ -11,7 +11,7 @@ public interface ICamera
 
     void Resize(Vector2D<int> windowSize);
 
-    void Update(float dx, float dy, float tx, float ty, float md);
+    void Update(float dx, float dy, float tx, float ty, float md, double time);
 
     Matrix4x4 GetRotation();
 }

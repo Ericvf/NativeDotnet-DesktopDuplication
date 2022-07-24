@@ -2,7 +2,7 @@
   "profiles": {
     "DotnetDirectX11DesktopDuplication": {
       "commandName": "Project",
-      "commandLineArgs": "\"d:\\Marvin_KeyChain.stl\""
+      "commandLineArgs": "\"d:\\UltimakerRobot_support.stl\""
     }
   }
 }
